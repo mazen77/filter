@@ -13,7 +13,7 @@ const worlds=[
 let landmarker,stream,running=false,processing=false,lastVideoTime=-1,lastDetect=0,world=0,previousWorld=0,transitionStart=-1,smoothPortalPoints=null,closed=false,closeFrames=0,switchReady=true,lastSwitchAt=0,revealUntil=0,particles=[],facing="user",recorder,chunks=[],latestBlob=null,frameHandle,trackingError="";
 const off=document.createElement("canvas"),ox=off.getContext("2d");
 
-function fit(){const d=Math.min(devicePixelRatio||1,1.5),r=canvas.getBoundingClientRect();canvas.width=Math.round(r.width*d);canvas.height=Math.round(r.height*d);ctx.setTransform(d,0,0,d,0,0);}
+function fit(){const d=Math.min(devicePixelRatio||1,1.25),r=canvas.getBoundingClientRect();canvas.width=Math.round(r.width*d);canvas.height=Math.round(r.height*d);ctx.setTransform(d,0,0,d,0,0);}
 function size(){return {w:canvas.clientWidth,h:canvas.clientHeight}}
 function show(el,on=true){el.classList.toggle("hidden",!on)}
 function tone(freq=520,duration=.09,type="sine"){try{const a=new AudioContext(),o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(freq,a.currentTime);o.frequency.exponentialRampToValueAtTime(freq*1.7,a.currentTime+duration);g.gain.setValueAtTime(.07,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+duration);o.connect(g).connect(a.destination);o.start();o.stop(a.currentTime+duration)}catch{}}
@@ -32,7 +32,7 @@ async function init(){
   await startCamera();running=true;show(ui.loading,false);show(ui.guide);show(ui.controls);fit();loop();
  }catch(e){show(ui.loading,false);show(ui.error);ui.errorText.textContent=e?.name==="NotAllowedError"?"اسمح باستخدام الكاميرا من إعدادات المتصفح، ثم حاول مجدداً.":(e.message||"تعذّر تشغيل التجربة على هذا الجهاز.")}
 }
-async function startCamera(){if(stream)stream.getTracks().forEach(t=>t.stop());const landscape=innerWidth>innerHeight,w=landscape?960:540,h=landscape?540:960;stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:facing},width:{ideal:w},height:{ideal:h},aspectRatio:{ideal:w/h},frameRate:{ideal:24,max:24}}});video.srcObject=stream;await video.play()}
+async function startCamera(){if(stream)stream.getTracks().forEach(t=>t.stop());const landscape=innerWidth>innerHeight,w=landscape?720:405,h=landscape?405:720;stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:facing},width:{ideal:w},height:{ideal:h},aspectRatio:{ideal:w/h},frameRate:{ideal:24,max:24}}});video.srcObject=stream;await video.play()}
 function point(lm,i,w,h){return {x:(1-lm[i].x)*w,y:lm[i].y*h}}
 function polyPath(p){ctx.beginPath();ctx.moveTo(p[0].x,p[0].y);for(let i=1;i<p.length;i++)ctx.lineTo(p[i].x,p[i].y);ctx.closePath()}
 function drawVideo(w,h){const va=video.videoWidth/video.videoHeight,ca=w/h;let dw,dh,dx,dy;if(va>ca){dw=w;dh=w/va;dx=0;dy=(h-dh)/2}else{dh=h;dw=h*va;dx=(w-dw)/2;dy=0}ctx.save();ctx.translate(w,0);ctx.scale(-1,1);ctx.drawImage(video,dx,dy,dw,dh);ctx.restore();return {dw,dh,dx,dy}}
