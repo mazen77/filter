@@ -15,7 +15,13 @@ uploaded.
 6. Open the URL GitHub shows after deployment finishes.
 
 Camera access requires HTTPS. GitHub Pages supplies HTTPS automatically. The
-first visit also needs internet access to load MediaPipe and its hand model.
+The complete MediaPipe runtime and hand model are included in the repository.
+The camera is intentionally limited to a mobile-safe resolution for reliable
+tracking on GitHub Pages.
+
+When opened directly as a local `file://` page, model assets load from the
+pinned CDN because browsers block WebAssembly/model fetches from local files.
+On GitHub Pages, all assets load from the included `vendor` directory.
 
 ## Local testing
 

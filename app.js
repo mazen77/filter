@@ -10,7 +10,7 @@ const worlds=[
  {name:"عالم البكسل",filter:"contrast(1.25) saturate(1.8)",pixel:true},
  {name:"عالم الكوميكس",filter:"contrast(1.8) saturate(2.5) brightness(1.05)"}
 ];
-let landmarker,stream,running=false,processing=false,lastVideoTime=-1,lastDetect=0,world=0,closed=false,closeFrames=0,revealUntil=0,particles=[],facing="user",recorder,chunks=[],latestBlob=null,frameHandle;
+let landmarker,stream,running=false,processing=false,lastVideoTime=-1,lastDetect=0,world=0,closed=false,closeFrames=0,revealUntil=0,particles=[],facing="user",recorder,chunks=[],latestBlob=null,frameHandle,trackingError="";
 const off=document.createElement("canvas"),ox=off.getContext("2d");
 
 function fit(){const d=Math.min(devicePixelRatio||1,2),r=canvas.getBoundingClientRect();canvas.width=Math.round(r.width*d);canvas.height=Math.round(r.height*d);ctx.setTransform(d,0,0,d,0,0);}
@@ -23,16 +23,19 @@ async function init(){
  try{
   if(!navigator.mediaDevices?.getUserMedia)throw new Error("هذا المتصفح لا يدعم الوصول إلى الكاميرا.");
   if(typeof Hands==="undefined")throw new Error("تعذّر تحميل نظام تتبع اليد. تحقق من اتصال الإنترنت ثم أعد المحاولة.");
-  landmarker=new Hands({locateFile:file=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
-  landmarker.setOptions({maxNumHands:2,modelComplexity:1,minDetectionConfidence:.55,minTrackingConfidence:.55});
-  landmarker.onResults(r=>{window.__lastHands=r.multiHandLandmarks||[]});
+  const modelRoot=location.protocol==="file:"
+   ?"https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/"
+   :new URL("./vendor/mediapipe/",document.baseURI).href;
+  landmarker=new Hands({locateFile:file=>modelRoot+file});
+  landmarker.setOptions({maxNumHands:2,modelComplexity:0,minDetectionConfidence:.45,minTrackingConfidence:.45});
+  landmarker.onResults(r=>{trackingError="";window.__lastHands=r.multiHandLandmarks||[]});
   await startCamera();running=true;show(ui.loading,false);show(ui.guide);show(ui.controls);fit();loop();
  }catch(e){show(ui.loading,false);show(ui.error);ui.errorText.textContent=e?.name==="NotAllowedError"?"اسمح باستخدام الكاميرا من إعدادات المتصفح، ثم حاول مجدداً.":(e.message||"تعذّر تشغيل التجربة على هذا الجهاز.")}
 }
-async function startCamera(){if(stream)stream.getTracks().forEach(t=>t.stop());stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:facing},width:{ideal:1280},height:{ideal:1920}}});video.srcObject=stream;await video.play()}
+async function startCamera(){if(stream)stream.getTracks().forEach(t=>t.stop());const landscape=innerWidth>innerHeight,w=landscape?1280:720,h=landscape?720:1280;stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:facing},width:{ideal:w},height:{ideal:h},aspectRatio:{ideal:w/h},frameRate:{ideal:24,max:30}}});video.srcObject=stream;await video.play()}
 function point(lm,i,w,h){return {x:(1-lm[i].x)*w,y:lm[i].y*h}}
 function polyPath(p){ctx.beginPath();ctx.moveTo(p[0].x,p[0].y);for(let i=1;i<p.length;i++)ctx.lineTo(p[i].x,p[i].y);ctx.closePath()}
-function drawVideo(w,h){const va=video.videoWidth/video.videoHeight,ca=w/h;let dw,dh,dx,dy;if(va>ca){dh=h;dw=h*va;dx=(w-dw)/2;dy=0}else{dw=w;dh=w/va;dx=0;dy=(h-dh)/2}ctx.save();ctx.translate(w,0);ctx.scale(-1,1);ctx.drawImage(video,dx,dy,dw,dh);ctx.restore();return {dw,dh,dx,dy}}
+function drawVideo(w,h){const va=video.videoWidth/video.videoHeight,ca=w/h;let dw,dh,dx,dy;if(va>ca){dw=w;dh=w/va;dx=0;dy=(h-dh)/2}else{dh=h;dw=h*va;dx=(w-dw)/2;dy=0}ctx.save();ctx.translate(w,0);ctx.scale(-1,1);ctx.drawImage(video,dx,dy,dw,dh);ctx.restore();return {dw,dh,dx,dy}}
 function mapPoint(lm,i,box,w){const vx=lm[i].x*box.dw+box.dx;return{x:w-vx,y:lm[i].y*box.dh+box.dy}}
 function drawTracking(lms,box,w){for(const lm of lms){for(const i of [4,8]){const p=mapPoint(lm,i,box,w);ctx.save();ctx.shadowBlur=14;ctx.shadowColor="#00f0ff";ctx.fillStyle=i===8?"#00f0ff":"#b7ff00";ctx.beginPath();ctx.arc(p.x,p.y,6,0,Math.PI*2);ctx.fill();ctx.restore()}}}
 function portal(lms,box,w,h,now){
@@ -54,8 +57,8 @@ function burst(c){for(let i=0;i<55;i++)particles.push({x:c.x,y:c.y,a:Math.random
 function drawParticles(){for(const p of particles){p.x+=Math.cos(p.a)*p.s;p.y+=Math.sin(p.a)*p.s;p.life-=.025;ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=Math.random()>.5?"#ff62dc":"#65efff";ctx.beginPath();ctx.arc(p.x,p.y,1+p.life*3,0,7);ctx.fill()}ctx.globalAlpha=1;particles=particles.filter(p=>p.life>0)}
 function loop(now=performance.now()){
  if(!running)return;const {w,h}=size();ctx.clearRect(0,0,w,h);const box=drawVideo(w,h);let results=null;
- if(!processing&&video.currentTime!==lastVideoTime&&now-lastDetect>45){lastVideoTime=video.currentTime;lastDetect=now;processing=true;landmarker.send({image:video}).catch(e=>{console.error("Hand tracking:",e)}).finally(()=>{processing=false})}results={landmarks:window.__lastHands||[]};
- drawTracking(results.landmarks,box,w);const seen=results.landmarks.length===2&&portal(results.landmarks,box,w,h,now);if(!seen){ui.guideTitle.textContent=results.landmarks.length===1?"تم رصد يد واحدة — أظهر اليد الأخرى":"أظهر كلتا يديك";ui.guideText.textContent=results.landmarks.length?"ابتعد قليلاً حتى تظهر اليدان بالكامل":"ستضيء أطراف الإبهام والسبابة عند رصدها"}
+ if(!processing&&video.readyState>=2&&video.currentTime!==lastVideoTime&&now-lastDetect>80){lastVideoTime=video.currentTime;lastDetect=now;processing=true;Promise.resolve(landmarker.send({image:video})).catch(e=>{trackingError=e?.message||String(e);console.error("Hand tracking:",e)}).finally(()=>{processing=false})}results={landmarks:window.__lastHands||[]};
+ drawTracking(results.landmarks,box,w);const seen=results.landmarks.length===2&&portal(results.landmarks,box,w,h,now);if(!seen){ui.guideTitle.textContent=trackingError?"خطأ في نظام تتبع اليد":results.landmarks.length===1?"تم رصد يد واحدة — أظهر اليد الأخرى":"أظهر كلتا يديك";ui.guideText.textContent=trackingError?trackingError:results.landmarks.length?"ابتعد قليلاً حتى تظهر اليدان بالكامل":"ستضيء أطراف الإبهام والسبابة عند رصدها"}
  drawParticles();if(now<revealUntil){show(ui.reveal);ui.worldName.textContent=worlds[world].name;const a=(revealUntil-now)/1450;ctx.fillStyle=`rgba(255,45,210,${a*.18})`;ctx.fillRect(0,0,w,h)}else show(ui.reveal,false);
  frameHandle=requestAnimationFrame(loop);
 }

@@ -1,7 +1,7 @@
 :root{color-scheme:dark;--ink:#080611;--pink:#ff3bd4;--cyan:#53e8ff;--white:#fff;--glass:rgba(8,6,17,.58)}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05040a;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#fff}
 button{font:inherit;color:inherit}.app{position:relative;width:100%;height:100%;height:100dvh;overflow:hidden;background:radial-gradient(circle at 50% 36%,#241141 0,#080611 58%)}
-#stage,#camera{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}#camera{opacity:0;pointer-events:none}
+#stage,#camera{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}#camera{opacity:0;pointer-events:none}
 .topbar{position:absolute;z-index:5;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:max(18px,env(safe-area-inset-top)) 18px 12px;background:linear-gradient(#090611cc,transparent)}
 .brand{font-size:.78rem;font-weight:900;letter-spacing:.14em;display:flex;align-items:center;gap:9px}.brand-orb{width:11px;height:11px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 10px var(--pink),inset 0 0 5px var(--cyan)}
 .icon-btn,.round-btn{border:1px solid #ffffff33;background:#0b0718aa;backdrop-filter:blur(12px);border-radius:50%;width:44px;height:44px;font-size:1.5rem;display:grid;place-items:center;cursor:pointer}
